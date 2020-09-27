@@ -1,0 +1,65 @@
+# Copyright 2020 Banco Bilbao Vizcaya Argentaria, S.A.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# File: action.yml
+# Description: Metadata¹ and full implementation for this GitHub Action
+#
+# ¹: https://help.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+
+name: 'Bump Go'
+description: 'Ensure Go is up-to-date'
+author: 'panchoh'
+branding:
+  icon: 'refresh-cw'
+  color: 'blue'
+inputs:
+  go-version-filepath:
+    description: 'Path to the file containing the Go version to build your project'
+    required: false
+    default: '.github/versions/go'
+outputs:
+  go-version:
+    description: 'Latest current Go version'
+    value: ${{ steps.bump-go.outputs.go-version }}
+runs:
+  using: "composite"
+  steps:
+    - name: Ensure Go is up-to-date
+      id: bump-go
+      shell: bash
+      run: |
+        # Handle input
+        go_version_filepath="${{ inputs.go-version-filepath }}"
+
+        # Ensure that the file that holds the Go version exists
+        if [[ ! -e "$go_version_filepath" ]]; then
+          echo "::error::File ’$go_version_filepath’ does not exist!"
+          exit 1
+        fi
+
+        # Identify most up-to-date current Go¹ and write it to $go_version_filepath.
+        #
+        # - The first element [0] of this JSON is the latest *current* Go,
+        #   while the second [1] is the latest *previous* Go. See ².
+        #  
+        # - Note that the Go version has a 'go' prefix that has to be trimmed.
+        #  
+        # ¹: https://pkg.go.dev/golang.org/x/website/internal/dl#pkg-overview
+        # ²: https://golang.org/doc/devel/release.html#policy
+        curl --silent --fail 'https://golang.org/dl/?mode=json'         \
+        | jq --raw-output --exit-status '.[0].version | sub("^go"; "")' \
+        > $go_version_filepath
+
+        # Produce output
+        echo ::set-output name=go-version::$(< $go_version_filepath)
