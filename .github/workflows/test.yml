@@ -1,0 +1,28 @@
+name: test
+on:
+  schedule:
+    - cron: 42 5 * * *
+  push:
+    branches:
+      - main
+
+jobs:
+  bump-go:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Ensure Go is up-to-date
+        id: bump-go
+        uses: BBVA/bump-go@main
+        with:
+          go-version-filepath: .github/versions/go
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          author: GitHub <noreply@github.com>
+          title: Bump Go version
+          commit-message: "chore: bump Go version to ${{ steps.bump-go.outputs.go-version }}"
+          branch: bump-go/patch
+          delete-branch: true
